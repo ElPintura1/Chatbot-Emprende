@@ -1,19 +1,21 @@
-from PyPDF2 import PdfReader
+import pdfplumber
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import os
 
-# --- CONFIGURACIÓN ---
-pdf_path = "C:/Users/Chocl/Desktop/info_11_01.pdf"  # Asegúrate de que esta ruta sea correcta
+# --- RUTA ACTUALIZADA ---
+pdf_path = "data/info_11_01.pdf"  # ← asegúrate de que el archivo esté allí
 
 # --- FUNCIÓN PARA EXTRAER TEXTO ---
 def extraer_texto(pdf_path):
-    print("🔍 Extrayendo texto del PDF...")
+    print("🔍 Extrayendo texto del PDF con pdfplumber...")
     try:
-        reader = PdfReader(pdf_path)
         texto = ""
-        for page in reader.pages:
-            texto += page.extract_text() + "\n"
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    texto += page_text + "\n"
         return texto
     except Exception as e:
         print(f"❌ Error al leer el PDF: {e}")
@@ -21,29 +23,26 @@ def extraer_texto(pdf_path):
 
 # --- EJECUCIÓN PRINCIPAL ---
 if __name__ == "__main__":
-    # Verificar si el PDF existe
     if not os.path.exists(pdf_path):
         print(f"⚠️ Archivo no encontrado: {pdf_path}")
     else:
-        # 1. Extraer texto
         texto = extraer_texto(pdf_path)
         if texto:
-            print(f"✅ Texto extraído (primeros 300 caracteres):\n{texto[:300]}...")
-            
-            # 2. Dividir en segmentos
+            print(f"✅ Texto extraído (primeros 500 caracteres):\n{texto[:500]}...\n")
+
+            # Dividir en segmentos por saltos dobles de línea
             segmentos = [p.strip() for p in texto.split('\n\n') if p.strip()]
-            print(f"\n📊 Número de segmentos: {len(segmentos)}")
-            
-            # 3. Generar embeddings
-            print("\n🔄 Generando embeddings... (esto puede tomar unos minutos)")
+            print(f"📊 Número de segmentos creados: {len(segmentos)}")
+
+            # Generar embeddings
+            print("🔄 Generando embeddings...")
             modelo = SentenceTransformer('all-MiniLM-L6-v2')
             embeddings = modelo.encode(segmentos)
-            
-            # 4. Guardar resultados
-            np.save("embeddings.npy", embeddings)
-            with open("segmentos.txt", "w", encoding="utf-8") as f:
-                f.write("\n\n===\n\n".join(segmentos))
-            
-            print("\n🎉 ¡Proceso completado! Archivos generados:")
-            print(f"- embeddings.npy (vectores numéricos, tamaño: {embeddings.shape})")
-            print(f"- segmentos.txt (texto procesado)")
+
+            # Guardar los archivos en carpeta scripts
+            np.save("scripts/embeddings.npy", embeddings)
+            with open("scripts/segmentos.txt", "w", encoding="utf-8") as f:
+                for s in segmentos:
+                    f.write(s.replace("\n", " ").strip() + "\n")
+
+            print("🎉 ¡Proceso completado!")
